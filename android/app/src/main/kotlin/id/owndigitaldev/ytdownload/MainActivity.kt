@@ -1,0 +1,6 @@
+package id.owndigitaldev.ytdownload
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity: FlutterActivity() {
+}
