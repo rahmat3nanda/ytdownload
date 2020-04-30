@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ytdownload/video_parser.dart';
 
@@ -8,16 +10,37 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   TextEditingController _url = TextEditingController();
-  String _id, _aUrl, _mvUrl, _vUrl, _pbs1, _pbs2, _pbs3;
+  String _judul, _urlImage, _proses;
   VideoParser _vp = VideoParser();
+  Timer _prosesChecker;
 
   void _fetchData() async {
-//    await _vp.getVideo(url: _url.text).then((res) {
-//      setState(() {
-//        _id = res.title;
-//      });
-//    });
+    await _vp.getVideo(url: _url.text).then((res) {
+      setState(() {
+        _judul = res.title;
+        _urlImage = res.thumbnailSet.mediumResUrl;
+      });
+    });
+  }
+
+  void _downloadData() async {
+    _cekProses();
     await _vp.download(url: _url.text);
+  }
+
+  void _cekProses() {
+    _prosesChecker = Timer(Duration(milliseconds: 500), () {
+      var proses = _vp.getCounter() ?? 0;
+      setState(() {
+        _proses = proses.toString() + "%";
+      });
+      if (proses == 100) {
+        _prosesChecker.cancel();
+        _proses += " - Unduhan Selesai";
+      } else {
+        _cekProses();
+      }
+    });
   }
 
   @override
@@ -27,13 +50,9 @@ class _HomePageState extends State<HomePage> {
 //    _url.text = "https://youtu.be/nJcWDwNyYXE";
     _url.text =
         "https://www.youtube.com/watch?v=kgZzOMIzLu0&list=RDMM8HnLRrQ3RS4&index=6";
-    _id = "";
-    _aUrl = "";
-    _mvUrl = "";
-    _vUrl = "";
-    _pbs1 = "";
-    _pbs2 = "";
-    _pbs3 = "";
+    _judul = "";
+    _urlImage = "";
+    _proses = "";
   }
 
   @override
@@ -94,19 +113,24 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             SizedBox(height: 16.0),
-            Text(_id),
+            Text(_judul),
             SizedBox(height: 16.0),
-            Text(_aUrl),
+            _urlImage.isEmpty ? Container() : Image.network(_urlImage),
             SizedBox(height: 16.0),
-            Text(_mvUrl),
+            _judul.isEmpty
+                ? Container()
+                : FlatButton(
+                    child: Text(
+                      "Download",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    color: Colors.blue,
+                    onPressed: () {
+                      _downloadData();
+                    },
+                  ),
             SizedBox(height: 16.0),
-            Text(_vUrl),
-            SizedBox(height: 16.0),
-            Text(_pbs1),
-            SizedBox(height: 16.0),
-            Text(_pbs2),
-            SizedBox(height: 16.0),
-            Text(_pbs3),
+            Text(_proses),
           ],
         ),
       ),

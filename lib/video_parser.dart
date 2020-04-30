@@ -2,30 +2,51 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:ytdownload/app_util.dart';
 
 class VideoParser {
   var yt = YoutubeExplode();
+  var progress;
 
   Future<Video> getVideo({@required String url}) async {
     var id = YoutubeExplode.parseVideoId(url);
     var video = await yt.getVideo(id);
-    print('Title: ${video.thumbnailSet.mediumResUrl}');
-    // Close the YoutubeExplode's http client.
-    yt.close();
+//    // Close the YoutubeExplode's http client.
+//    yt.close();
     return video;
   }
 
   Future download({@required String url}) async {
+    var path;
+    progress = 0;
+    await AppUtil.createFolderInAppDocDir().then((res) {
+      path = res;
+    }).catchError((e) {
+      print(e.toString());
+    });
     var id = YoutubeExplode.parseVideoId(url);
     // Get the video media stream.
     var mediaStream = await yt.getVideoMediaStream(id);
 
-    // Get the last audio track (the one with the highest bitrate).
-    var audio = mediaStream.audio.last;
-
+    // Get the last video track (the one with the highest bitrate).
+    var video = mediaStream.video.last;
+    for (int i = 0; i < mediaStream.video.length; i++) {
+      print(mediaStream.video[i].container
+          .toString()
+          .replaceAll('Container.', '')
+          .replaceAll(r'\', '')
+          .replaceAll('/', '')
+          .replaceAll('*', '')
+          .replaceAll('?', '')
+          .replaceAll('"', '')
+          .replaceAll('<', '')
+          .replaceAll('>', '')
+          .replaceAll('|', ''));
+    }
+    var stamp = DateTime.now().millisecondsSinceEpoch;
     // Compose the file name removing the unallowed characters in windows.
     var fileName =
-        '${mediaStream.videoDetails.title}.${audio.container.toString()}'
+        '${mediaStream.videoDetails.title}-$stamp.${video.container.toString()}'
             .replaceAll('Container.', '')
             .replaceAll(r'\', '')
             .replaceAll('/', '')
@@ -35,7 +56,9 @@ class VideoParser {
             .replaceAll('<', '')
             .replaceAll('>', '')
             .replaceAll('|', '');
-    var file = File('/sdcard/download/$fileName');
+    var file = new File('$path/$fileName');
+    print(path);
+    print(fileName);
 
     // Create the StreamedRequest to track the download status.
 
@@ -43,7 +66,7 @@ class VideoParser {
     var output = file.openWrite(mode: FileMode.writeOnlyAppend);
 
     // Track the file download status.
-    var len = audio.size;
+    var len = video.size;
     var count = 0;
     var oldProgress = -1;
 
@@ -53,16 +76,18 @@ class VideoParser {
     print(msg);
 
     // Listen for data received.
-    await for (var data in audio.downloadStream()) {
+    await for (var data in video.downloadStream()) {
       count += data.length;
-      var progress = ((count / len) * 100).round();
+      progress = ((count / len) * 100).round();
       if (progress != oldProgress) {
-        print(col);
         print('$progress%');
         oldProgress = progress;
       }
       output.add(data);
     }
-    print("oke");
+  }
+
+  getCounter() {
+    return progress ?? 0;
   }
 }
